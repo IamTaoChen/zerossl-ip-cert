@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"strings"
 )
@@ -101,7 +102,7 @@ func WritePrivKeyWrapper(keyType string, key interface{}, keyFile string) (err e
 }
 
 // CSRGeneratorWrapper is a wrapper for generating CSR.
-func CSRGeneratorWrapper(keyType string, subj pkix.Name, key interface{}, sigAlgStr string) (csr []byte, err error) {
+func CSRGeneratorWrapper(keyType string, subj pkix.Name, ipAddress []net.IP, key interface{}, sigAlgStr string) (csr []byte, err error) {
 	keyType_ := strings.ToUpper(keyType)
 	sigAlgStr_ := strings.ToUpper(sigAlgStr)
 	sigAlg_, ok := SignatureAlgorithms[sigAlgStr_]
@@ -112,11 +113,11 @@ func CSRGeneratorWrapper(keyType string, subj pkix.Name, key interface{}, sigAlg
 	switch keyType_ {
 	case "RSA":
 		{
-			csr, err = GenRsaCSR(subj, key.(*rsa.PrivateKey), sigAlg_)
+			csr, err = GenRsaCSR(subj, ipAddress, key.(*rsa.PrivateKey), sigAlg_)
 		}
 	case "ECDSA":
 		{
-			csr, err = GenEccCSR(subj, key.(*ecdsa.PrivateKey), sigAlg_)
+			csr, err = GenEccCSR(subj, ipAddress, key.(*ecdsa.PrivateKey), sigAlg_)
 		}
 	}
 	return
@@ -129,9 +130,10 @@ func GenRsaKey(bits int) *rsa.PrivateKey {
 }
 
 // GenRsaCSR generates a new RSA CSR.
-func GenRsaCSR(subj pkix.Name, key *rsa.PrivateKey, sigAlg x509.SignatureAlgorithm) (csr []byte, err error) {
+func GenRsaCSR(subj pkix.Name, ipAddress []net.IP, key *rsa.PrivateKey, sigAlg x509.SignatureAlgorithm) (csr []byte, err error) {
 	template_ := x509.CertificateRequest{
 		Subject:            subj,
+		IPAddresses:        ipAddress,
 		SignatureAlgorithm: sigAlg,
 	}
 	csr, err = x509.CreateCertificateRequest(rand.Reader, &template_, key)
@@ -145,9 +147,10 @@ func GenEccKey(curve elliptic.Curve) (key *ecdsa.PrivateKey) {
 }
 
 // GenEccCSR generates a new ECC CSR.
-func GenEccCSR(subj pkix.Name, key *ecdsa.PrivateKey, sigAlg x509.SignatureAlgorithm) (csr []byte, err error) {
+func GenEccCSR(subj pkix.Name, ipAddress []net.IP, key *ecdsa.PrivateKey, sigAlg x509.SignatureAlgorithm) (csr []byte, err error) {
 	template_ := x509.CertificateRequest{
 		Subject:            subj,
+		IPAddresses:        ipAddress,
 		SignatureAlgorithm: sigAlg,
 	}
 	csr, err = x509.CreateCertificateRequest(rand.Reader, &template_, key)

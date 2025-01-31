@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/url"
 	"os"
 	"os/exec"
@@ -171,17 +172,28 @@ func issueCertImpl(conf *CertConf) (certID string, err error) {
 	// Generate PrivateKey.
 	log.Printf("Generating private key for %v\n", conf.CommonName)
 	privKey_ := zerosslIPCert.KeyGeneratorWrapper(conf.KeyType, conf.KeyBits, conf.KeyCurve)
+
+	commonNameList := strings.Split(confCommonName, ",")
+	for i := range commonNameList {
+		commonNameList[i] = strings.TrimSpace(commonNameList[i])
+	}
 	subj_ := pkix.Name{
 		Country:            []string{conf.Country},
 		Province:           []string{conf.Province},
 		Locality:           []string{conf.Locality},
 		Organization:       []string{conf.Organization},
 		OrganizationalUnit: []string{conf.OrganizationUnit},
-		CommonName:         conf.CommonName,
+		CommonName:         commonNameList[0],
 	}
+
+	var ipAddress []net.IP
+	for _, ip := range commonNameList {
+		ipAddress = append(ipAddress, net.ParseIP(ip))
+	}
+
 	// Generate CSR.
 	log.Printf("Generating CSR for %v\n", conf.CommonName)
-	csr_, err := zerosslIPCert.CSRGeneratorWrapper(conf.KeyType, subj_, privKey_, conf.SigAlg)
+	csr_, err := zerosslIPCert.CSRGeneratorWrapper(conf.KeyType, subj_, ipAddress, privKey_, conf.SigAlg)
 	if err != nil {
 		log.Println(err)
 		return
